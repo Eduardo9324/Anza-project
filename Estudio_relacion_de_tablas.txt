@@ -1,0 +1,28 @@
+Usuarios inscritos en el curso 3, donde los usuarios tengan rol con nombre "estudiante" y su firstaccess
+sea después del 10 de mayo del 2021.
+
+SELECT u.id, u.username, u.firstname, u.lastname, u.email, u.firstaccess
+ - Esta línea selecciona unos datos la tabla "mdl_user"
+
+FROM mdl_user u
+ - Tabla sobre la cual se hace la consulta y se cambia su nombre a "u"
+
+JOIN mdl_user_enrolments ue ON u.id = ue.userid
+ - Se cambia el nombre de la tabla "mdl_user_enrolments" por "ue", y mediante el JOIN se une a la tabla "u" mediante el u.id = ue.userid
+
+JOIN mdl_enrol e ON ue.enrolid = e.id
+ - Se cambia en nombre de la tabla "mdl_enrol" por "e", y se une a la tabla "ue"
+
+WHERE e.courseid = 3 AND e.roleid = (SELECT id FROM mdl_role WHERE shortname = 'estudiante') AND u.firstaccess > 1620643200;
+ - Aqui se establecen las condiciones de la consulta a la DB, rol debe ser "Estudiante", su registro debe ser posterior al 10 de mayo de 2021, y debe tener id 3, el formato de la fecha esta en timestamp
+
+
+
+
+Contar todos los usuarios con rol de "profesor" inscritos en un centro musical de Pereira.
+¿Cómo modificaría el esquema relacional si los cursos tuvieran que ser divididos en grupos de
+estudiantes?
+
+Si tuviera que dividir los cursos por grupos se podria agregar una tabla intermedia para relacionar los cursos con los grupos Ej: coruse_groups y tendria el id del grupo, el courseid, el curso al que pertenece al grupo y el nombre del grupo.
+
+Crearia una relacion entre los usuarios y los grupos de estudiantes, se puede añadir un nuevo campo a la tabla de usuarios para especificar su rol especifico  
