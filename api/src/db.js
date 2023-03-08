@@ -45,15 +45,18 @@ sequelize.models = Object.fromEntries(capsEntries);
 const { User, Product, Purchase, Sale } = sequelize.models;
 
 // Aca vendrian las relaciones
+
 // UNO A MUCHOS
 // Usuario puede tener varias compras
 User.hasMany(Purchase);
 // Una compra pertenece a un usuario
 Purchase.belongsTo(User);
+
 // MUCHOS A MUCHOS
 // Una compra puede tener varios productos y un producto puede estar en varias compras
 Purchase.belongsToMany(Product, { through: "PurchaseItem" });
 Product.belongsToMany(Purchase, { through: "PurchaseItem" });
+
 // MUCHOS A MUCHOS
 // Un usuario puede comprar muchos productos u un producto puede ser comprado por muchos usuarios
 User.belongsToMany(Product, { through: "UserProc" });

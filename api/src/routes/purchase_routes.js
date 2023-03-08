@@ -19,7 +19,7 @@ purchaseRouter.get("/", async (req, res) => {
 
 
 // Obtener compra por id - Funsiona
-purchaseRouter.get("/id", async (req, res) => {
+purchaseRouter.get("/:id", async (req, res) => {
   const { id } = req.query;
 
   try {
