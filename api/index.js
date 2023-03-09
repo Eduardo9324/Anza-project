@@ -18,7 +18,7 @@ const testConection = async () => {
       });
     });
   } catch (error) {
-    console.log("Error en la conexion", error);
+    console.log("Error en la conexion: ", error);
   }
 };
 

@@ -9,32 +9,90 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../db")
 
 
-// Obtener usuarios - Funsiona
+// Obtener lista de usuarios, solo datos especificos - Funsiona
 userRouter.get("/", async (req, res) => {
-  const allUsers = await User.findAll();
+  const { limit = 10, offset = 0, fields = "" } = req.query;
+
+  // Valido que sean numeros enteros.
+  const parsedLimit = Math.abs(parseInt(limit));
+  const parsedOffset = Math.abs(parseInt(offset));
+
+  // valida que limit y offset sean numeros enteros positivos
+  if (
+    isNaN(parsedLimit) ||
+    isNaN(parsedOffset) ||
+    parsedLimit < 0 ||
+    parsedOffset < 0
+  ) {
+    return res
+      .status(400)
+      .send(
+        "Los parámetros de límite y desplazamiento deben ser números enteros positivos."
+      );
+  }
+
+  // Selecciona campos especificos para la consulta, no muestra informacion sencible
+  const allowedFields = ["id", "name", "email"];
+  const selectedFields = fields
+    .split(",")
+    .filter((field) => allowedFields.includes(field.trim()));
+
+  // Valido los campos seleccionados
+  if (!selectedFields.every((field) => allowedFields.includes(field))) {
+    return res.status(400).send("Uno o más campos seleccionados no existen.");
+  }
+
+  if (selectedFields.length > 3) {
+    return res.status(400).send("Demasiados campos seleccionados.");
+  }
+
   try {
-    allUsers ? res.status(200).json(allUsers) : res.status(404).send("No hay usuarios")
+    // Consulta de usuarios paginados y seleccionados, evita sobre cargar del servidor
+    const users = await User.findAll({
+      attributes: selectedFields.length > 0 ? selectedFields : allowedFields,
+      limit: Math.min(parsedLimit, 100),
+      offset: parsedOffset,
+    });
+
+    if (users.length === 0) {
+      return res.status(404).send("No se encontraron usuarios.");
+    }
+
+    // Respuesta con los usuarios encontrados
+    return res.status(200).json(users);
   } catch (error) {
-    res.status(400).json(error)
+    // Respuesta con el error de la consulta
+    console.log(error);
+    return res.status(500).json({ error: "Error al obtener los usuarios" });
   }
 });
 
 
+
 // obtener usuario por su id - Funsiona
-userRouter.get("/id", async (req, res) => {
-  const { id } = req.query
+userRouter.get("/:id", async (req, res) => {
+  const { id } = req.params;
+  
+  // Valida que el id sea un numero entero.
+  if (isNaN(parseInt(id))) {
+    return res.status(400).send("El parámetro ID debe ser un número entero.");
+  };
 
   try {
-    const findUser = await User.findByPk(id);
+    // Limoita los datos que se van a entregar
+    const findUser = await User.findByPk(id, {
+      attributes: ["id", "name", "email"]
+    });
 
     if (!findUser) {
       res.status(404).send("Usuario no encontrado");
     } else {
       return res.status(200).json(findUser);
     }
+
   } catch (error) {
     console.log(error);
-    res.status(400).send(error);
+    res.status(400).json(error);
   }
 });
 
@@ -48,7 +106,7 @@ userRouter.post("/", async (req, res) => {
       res.status(201).send("No hay id");
     } catch (error) {
       console.log(error);
-      res.status(400).send(error);
+      res.status(400).json(error);
     }
   } else {
     try {
@@ -63,7 +121,7 @@ userRouter.post("/", async (req, res) => {
       }
     } catch (error) {
       console.log(error);
-      res.status(400).send(error);
+      res.status(400).json(error);
     }
   }
 });
@@ -92,7 +150,7 @@ userRouter.put("/:id", async (req, res) => {
       return res.status(400).send("Faltan informacion para actualizar el usuario.");
     }
   } catch (error) {
-    console.log("Error in PUT request", error);
+    console.log("Error in PUT request: ", error);
     return res.status(400).json(error);
   }
 });
@@ -138,7 +196,7 @@ userRouter.post("/registro", async (req, res) => {
       return res.status(400).send("Este usuario ya está registrado.");
     }
 
-    // crea una contraseña encriptada
+    // crea una contraseña encriptada para guardarla en la DB
     const hashedPassword = await bcrypt.hash(password, 8);
 
     // crea el usuario en la base de datos

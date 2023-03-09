@@ -14,14 +14,23 @@ module.exports = (sequelize) => {
       name: {
         type: DataTypes.STRING,
         allowNull: false,
+        validate: {
+          notEmpty: true, // el campo no debe estar vacío
+        },
       },
       phone: {
         type: DataTypes.STRING,
         allowNull: true,
+        validate: {
+          isNumeric: true, // el campo debe ser numérico
+        },
       },
       email: {
         type: DataTypes.STRING,
         allowNull: true,
+        validate: {
+          isEmail: true, // el campo debe ser una dirección de correo electrónico válida
+        },
       },
       address: {
         type: DataTypes.STRING,
@@ -29,6 +38,13 @@ module.exports = (sequelize) => {
       },
       password: {
         type: DataTypes.STRING,
+        validate: {
+          isLongEnough(value) {
+            if (value.length < 8) {
+              throw new Error("La contraseña debe tener al menos 8 caracteres");
+            }
+          }
+        }
       },
     },
     {
