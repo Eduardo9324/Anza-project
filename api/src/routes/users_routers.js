@@ -245,11 +245,11 @@ userRouter.post("/registro", upload.single("imagen"), async (req, res) => {
   }
 
   // Valida que se haya subido una foto de perfil.
-  if (!profileImage) {
+  /* if (!profileImage) {
     return res
       .status(400)
       .send("Se requiere una imagen de perfil para el registro.");
-  }
+  } */
 
   try {
     const existUser = await User.findOne({ where: { id: id } });

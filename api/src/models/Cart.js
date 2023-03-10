@@ -9,12 +9,22 @@ module.exports = (sequelize) => {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
-        allowNull: false,
+      },
+      productsID: {
+        type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.STRING)),
+        defaultValue: [],
       },
       total: {
         type: DataTypes.FLOAT,
-        allowNull: false,
         defaultValue: 0,
+      },
+      userId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      quantity: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1,
       },
     },
     {
