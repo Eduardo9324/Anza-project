@@ -43,8 +43,12 @@ module.exports = (sequelize) => {
             if (value.length < 8) {
               throw new Error("La contraseña debe tener al menos 8 caracteres");
             }
-          }
-        }
+          },
+        },
+      },
+      profileImage: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
     },
     {

@@ -3,10 +3,38 @@ require("dotenv").config();
 const { Router } = require("express");
 const userRouter = Router();
 // Requiero estas dependencias para la autenticacion del usuario
+// Encriptado de contaseña
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+// Permite cargar archivos de tipo imagen
+const multer = require("multer");
+// Validator para menejar validaciones de los datos de los usuarios.
+const validator = require("validator");
 // Importa el modelo
-const { User } = require("../db")
+const { User } = require("../db");
+
+
+// Configuración de multer para permitir manipular archivos de tipo imagen.
+/* const storage = multer.diskStorage({
+  destination: "src/imgs",
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  },
+}); */
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const extension = file.originalname.split(".").pop();
+    cb(null, `${file.fieldname}-${uniqueSuffix}.${extension}`);
+  },
+});
+// Indica donde se deben guardar los archivos cargados
+const upload = multer({ storage });
+
+// RUTAS DE USUARIO
 
 
 // Obtener lista de usuarios, solo datos especificos - Funsiona
@@ -40,11 +68,11 @@ userRouter.get("/", async (req, res) => {
   // Valido los campos seleccionados
   if (!selectedFields.every((field) => allowedFields.includes(field))) {
     return res.status(400).send("Uno o más campos seleccionados no existen.");
-  }
+  };
 
   if (selectedFields.length > 3) {
     return res.status(400).send("Demasiados campos seleccionados.");
-  }
+  };
 
   try {
     // Consulta de usuarios paginados y seleccionados, evita sobre cargar del servidor
@@ -54,9 +82,10 @@ userRouter.get("/", async (req, res) => {
       offset: parsedOffset,
     });
 
+    // Verifica si existen usuarios
     if (users.length === 0) {
       return res.status(404).send("No se encontraron usuarios.");
-    }
+    };
 
     // Respuesta con los usuarios encontrados
     return res.status(200).json(users);
@@ -64,7 +93,7 @@ userRouter.get("/", async (req, res) => {
     // Respuesta con el error de la consulta
     console.log(error);
     return res.status(500).json({ error: "Error al obtener los usuarios" });
-  }
+  };
 });
 
 
@@ -79,21 +108,22 @@ userRouter.get("/:id", async (req, res) => {
   };
 
   try {
-    // Limoita los datos que se van a entregar
+    // Limita los datos que se van a entregar.
     const findUser = await User.findByPk(id, {
       attributes: ["id", "name", "email"]
     });
 
+    // Verifica que el usuario exista.
     if (!findUser) {
       res.status(404).send("Usuario no encontrado");
     } else {
       return res.status(200).json(findUser);
-    }
+    };
 
   } catch (error) {
     console.log(error);
     res.status(400).json(error);
-  }
+  };
 });
 
 
@@ -118,19 +148,21 @@ userRouter.post("/", async (req, res) => {
         const newUser = await User.findOrCreate({ where: { id, name, email } });
 
         res.status(201).json(newUser);
-      }
+      };
+
     } catch (error) {
       console.log(error);
       res.status(400).json(error);
-    }
-  }
+    };
+  };
 });
 
 
 // Actualiza los datos del usuario - Funsiona
-userRouter.put("/:id", async (req, res) => {
+userRouter.put("/:id", upload.single("imagen"), async (req, res) => {
   const { id } = req.params;
   const { name, phone, email, address } = req.body;
+  const profileImage = req.file?.filename;
 
   if (!id) {
     return res.status(400).send("No se paso un id correcto.");
@@ -145,9 +177,16 @@ userRouter.put("/:id", async (req, res) => {
   try {
     if (name && phone && email && address) {
       await findUser.update({ name, phone, email, address });
+      // Verifica y actualiza el archivo de imagen
+      if (profileImage) {
+        await findUser.update({ profileImage });
+      }
+
       return res.status(200).json(findUser);
     } else {
-      return res.status(400).send("Faltan informacion para actualizar el usuario.");
+      return res
+        .status(400)
+        .send("Faltan informacion para actualizar el usuario.");
     }
   } catch (error) {
     console.log("Error in PUT request: ", error);
@@ -162,7 +201,7 @@ userRouter.delete("/:id", async (req, res) => {
 
   if (!id) {
     return res.status(400).send("No se ha proporcionado un id.");
-  }
+  };
 
   try {
     const findUser = await User.findOne({ where: { id: id } });
@@ -172,21 +211,44 @@ userRouter.delete("/:id", async (req, res) => {
     } else {
       await findUser.destroy();
       return res.status(200).send("Usuario eliminado correctamente.");
-    }
+    };
 
   } catch (error) {
     console.log("Error en la solicitud DELETE", error);
     return res.status(400).json(error);
-  }
+  };
 });
 
 
 // Ruta de registro de usuario - Funsiona
-userRouter.post("/registro", async (req, res) => {
+userRouter.post("/registro", upload.single("imagen"), async (req, res) => {
   const { id, name, phone, email, address, password } = req.body;
+  const profileImage = req.file?.filename;
 
   if (!id || !name || !phone || !email || !address || !password) {
     return res.status(400).send("Faltan datos obligatorios para el registro.");
+  }
+
+  // Validacion de correo electrónico.
+  if (!validator.isEmail(email)) {
+    return res
+      .status(400)
+      .json({ error: "El correo electrónico ingresado no es válido." });
+  }
+
+  // Validacion de telefono.
+  const telefonoRegex = /^[0-9]+$/;
+  if (!telefonoRegex.test(phone)) {
+    return res
+      .status(400)
+      .json({ error: "El numero de telefono ingresado no es válido." });
+  }
+
+  // Valida que se haya subido una foto de perfil.
+  if (!profileImage) {
+    return res
+      .status(400)
+      .send("Se requiere una imagen de perfil para el registro.");
   }
 
   try {
@@ -206,7 +268,8 @@ userRouter.post("/registro", async (req, res) => {
       phone,
       email,
       address,
-      password: hashedPassword
+      password: hashedPassword,
+      profileImage,
     });
 
     newUser
@@ -230,7 +293,7 @@ userRouter.post("/login", async (req, res) => {
         return res
           .status(401)
           .send("Correo electrónico incorrecto.");
-      }
+      };
 
       // Verificar la contraseña
       const isPasswordValid = await bcrypt.compare(password, verifyUser.password);
@@ -238,7 +301,7 @@ userRouter.post("/login", async (req, res) => {
         return res
           .status(401)
           .send("Contraseña incorrecta.");
-      }
+      };
 
       // Crear un token JWT
       const token = jwt.sign(
@@ -256,7 +319,7 @@ userRouter.post("/login", async (req, res) => {
     } catch (error) {
       console.error(error);
       return res.status(500).json("Error al iniciar sesión", error);
-    }
+  };
   });
 
 // Ruta de cierre de sesion - Funsiona
@@ -272,7 +335,7 @@ userRouter.post("/logout", async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json("Error al cerrar sesión", error);
-  }
+  };
 });
 
 
